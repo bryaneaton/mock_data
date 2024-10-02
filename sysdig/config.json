@@ -1,0 +1,40 @@
+{
+  "special": {
+    "Severity": ["Critical", "High", "Medium", "Low"],
+    "Vulnerability ID": "cve",
+    "Image id": "docker image id",
+    "Image name": "docker image name",
+    "Image tag": "docker image tag",
+    "Vulnerability type": ["os", "python", "golang", "java", "nodejs", "ruby", "php", "dotnet", "c", "c++", "c#", "perl", "shell", "ruby", "php", "dotnet", "javascript", "c", "c++", "c#", "perl", "shell"]
+  },
+  "fields": {
+  "Vulnerability ID": "str",
+  "Severity": "str",
+  "Image id": "str",
+  "Image name": "str",
+  "Image tag": "str",
+  "Vulnerability type": "str",
+  "CVSS v2 vector": "str",
+  "CVSS v2 base score": "float",
+  "CVSS v3 vector": "str",
+  "CVSS v3 base score": "float",
+  "Disclosure date": "date",
+  "Solution date": "date",
+  "Vuln link": "str",
+  "Fix version": "str",
+  "Package name": "str",
+  "Package version": "str",
+  "Package path": "str",
+  "Image added": "date",
+  "Pod": "str",
+  "Namespace": "str",
+  "Container name": "str",
+  "Cluster name": "str",
+  "Deployment": "str",
+  "Cve description": "str",
+  "Published date": "str",
+  "image order": "int",
+  "package order": "int",
+  "pod order": "int"
+  }
+}
