@@ -12,3 +12,4 @@ git clone https://github.com/securezeron/cve-list.git
 cd -
 mkdir -p cve
 cp /tmp/cve-list/CVE-2023* ./cve/
+cp /tmp/cve-list/CVE-2024* ./cve/

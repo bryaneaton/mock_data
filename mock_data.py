@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import concurrent
 import string
 from datetime import datetime
 from random import randint, choice
@@ -8,6 +9,8 @@ import argparse
 from pathlib import Path
 import json
 import csv
+from concurrent.futures import ThreadPoolExecutor
+import os
 
 fake = Faker()
 
@@ -129,7 +132,47 @@ def generate_random_cvss_v3():
 def generate_random_float():
     return round(random.uniform(0.0, 9.9), 1)
 
-def generate_csv(config_path):
+
+def generate_row(header, config, cves):
+    row = []
+    for field in header:
+        cve = fake.random_element(cves)
+        if config.get('special', {}).get(field) == 'cve':
+            row.append(cve.get('name'))
+        elif field.lower() == 'severity':
+            row.append(fake.random_element(config.get('special', {}).get(field, [])))
+        elif field.lower() == 'image id':
+            row.append(generate_docker_image_id())
+        elif field.lower() == 'image name':
+            row.append(generate_realistic_docker_repo()[1])
+        elif field.lower() == 'image tag':
+            row.append(generate_realistic_docker_repo()[2])
+        elif field.lower() == 'vulnerability type':
+            row.append(fake.random_element(config.get('special', {}).get(field, [])))
+        elif field.lower() == 'cvss v2 vector':
+            row.append(generate_random_cvss_v2())
+        elif field.lower() == 'cvss v3 vector':
+            row.append(generate_random_cvss_v3())
+        elif 'base score' in field.lower():
+            row.append(generate_random_float())
+        elif 'published date' in field.lower():
+            dt = datetime.strptime(cve.get('publishedDate'), "%Y-%m-%dT%H:%M:%S.%f")
+            row.append(dt.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        elif 'date' in field.lower():
+            if config.get('fields').get(field) == 'date':
+                row.append(fake.date_this_year().strftime('%m/%d/%Y'))
+            else:
+                row.append(fake.date_this_year().strftime('%Y-%m-%dT%H:%M:%SZ'))
+        elif config.get('fields', {}).get(field) == 'int':
+            row.append(randint(1, 100))
+        elif 'description' in field.lower():
+            row.append(cve.get('description'))
+        else:
+            row.append('unknown')
+    return row
+
+
+def generate_csv(config_path: str, rows: int):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f'sys_dig_sample_{timestamp}.csv'
     # make directory
@@ -140,49 +183,20 @@ def generate_csv(config_path):
         header = gen_header_from_config(config_path)
         writer.writerow(header)  # Write the header
         # write random # of rows
-        for i in range(randint(5, 30)):
-            row = []
-            for field in header:
-                cve = fake.random_element(cves)
-                if config.get('special', {}).get(field) == 'cve':
-                    row.append(cve.get('name'))
-                elif field.lower() == 'severity':
-                    row.append(fake.random_element(config.get('special', {}).get(field, [])))
-                elif field.lower() == 'image id':
-                    row.append(generate_docker_image_id())
-                elif field.lower() == 'image name':
-                    row.append(generate_realistic_docker_repo()[1])
-                elif field.lower() == 'image tag':
-                    row.append(generate_realistic_docker_repo()[2])
-                elif field.lower() == 'vulnerability type':
-                    row.append(fake.random_element(config.get('special', {}).get(field, [])))
-                elif field.lower() == 'cvss v2 vector':
-                    row.append(generate_random_cvss_v2())
-                elif field.lower() == 'cvss v3 vector':
-                    row.append(generate_random_cvss_v3())
-                elif 'base score' in field.lower():
-                    row.append(generate_random_float())
-                elif 'published date' in field.lower():
-                    dt = datetime.strptime(cve.get('publishedDate'), "%Y-%m-%dT%H:%M:%S.%f")
-                    row.append(dt.strftime("%Y-%m-%dT%H:%M:%SZ"))
-                elif 'date' in field.lower():
-                    if config.get('fields').get(field) == 'date':
-                        row.append(fake.date_this_year().strftime('%m/%d/%Y'))
-                    else:
-                        row.append(fake.date_this_year().strftime('%Y-%m-%dT%H:%M:%SZ'))
-                elif config.get('fields', {}).get(field) == 'int':
-                    row.append(randint(1, 100))
-                elif 'description' in field.lower():
-                    row.append(cve.get('description'))
-                else:
-                    row.append('unknown')
-            writer.writerow(row)
+        # Create a ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+            # Generate a list of futures
+            futures = [executor.submit(generate_row, header, config, cves) for _ in range(rows)]
+
+            for future in concurrent.futures.as_completed(futures):
+                writer.writerow(future.result())
 
 
 if __name__ == '__main__':
     # take a single argument from the command line
     parser = argparse.ArgumentParser()
     parser.add_argument('--file_type', help='Type of file to generate', type=str)
+    parser.add_argument('--rows', help='row count', type=int, default=100) 
     args = parser.parse_args()
     # args must be present
     if not args.file_type:
@@ -193,4 +207,4 @@ if __name__ == '__main__':
     print('generate file type:', file_type)
     cves = generate_cve()
     config = Path.cwd() / 'sysdig' / 'config.json'
-    generate_csv(config)
+    generate_csv(config_path=config, rows=args.rows)

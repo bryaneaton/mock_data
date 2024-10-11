@@ -1,6 +1,6 @@
 {
   "special": {
-    "Severity": ["Critical", "High", "Medium", "Low"],
+    "Severity": ["Critical", "High", "Medium", "Low", "Info"],
     "Vulnerability ID": "cve",
     "Image id": "docker image id",
     "Image name": "docker image name",
